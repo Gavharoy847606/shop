@@ -12,7 +12,7 @@ app.use(cors({
     'http://localhost:5173',
     process.env.CLIENT_URL || '',
     // 👇 Render deploy qilgan frontend URL ingizni shu yerga qo'shing
-    'https://your-frontend-name.onrender.com',
+    'https://erp-shop-b1vr.onrender.com',
   ].filter(Boolean),
   credentials: true,
 }));
