@@ -20,3 +20,4 @@ services:
       - DB_NAME=localhost_mvo8
       - DB_USER=wed
       - DB_PASSWORD=QSeRb83uaJvzLMdkLrXlOEBALwq8W9Z4
+      
