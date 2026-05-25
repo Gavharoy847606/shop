@@ -326,9 +326,7 @@ function StuffusShop() {
                     React.createElement("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 } }, filteredProducts.map(function (product) {
                         var isLow = product.quantity > 0 && product.quantity <= 5;
                         var isOut = product.quantity === 0;
-                        var imgSrc = imgErrors[product.sku]
-                            ? null
-                            : getProductImage(product.name);
+                        var imgSrc = imgErrors[product.sku] ? null : (product.image_url || null);
                         return (React.createElement("div", { key: product.id, style: {
                                 background: '#fff', border: '1px solid #e5e7eb', borderRadius: 20,
                                 overflow: 'hidden', display: 'flex', flexDirection: 'column',

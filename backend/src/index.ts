@@ -36,11 +36,11 @@ app.get('/api/products', async (req: Request, res: Response): Promise<void> => {
 });
 
 app.post('/api/products', async (req: Request, res: Response): Promise<void> => {
-  const { sku, name, quantity, price } = req.body;
+  const { sku, name,image_url, quantity, price } = req.body;
   try {
     const result = await query(
-      'INSERT INTO products (sku, name, quantity, price) VALUES ($1, $2, $3, $4) RETURNING *',
-      [sku, name, quantity, price]
+      'INSERT INTO products (sku, name,image_url quantity, price) VALUES ($1, $2, $3, $4,$5) RETURNING *',
+      [sku, name,image_url, quantity, price]
     );
     res.status(201).json(result.rows[0]);
   } catch (err: any) {
@@ -50,5 +50,5 @@ app.post('/api/products', async (req: Request, res: Response): Promise<void> => 
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server ${PORT}-portda ishlamoqda`);
+  console.log(`Server ${PORT}-portda ishlamoqda`);
 });

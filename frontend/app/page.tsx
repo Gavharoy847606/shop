@@ -354,9 +354,7 @@ export default function StuffusShop() {
               {filteredProducts.map(product => {
                 const isLow = product.quantity > 0 && product.quantity <= 5;
                 const isOut = product.quantity === 0;
-                const imgSrc = imgErrors[product.sku]
-                  ? null
-                  : getProductImage(product.name);
+                const imgSrc = imgErrors[product.sku] ? null : (product.image_url || null);
 
                 return (
                   <div key={product.id}

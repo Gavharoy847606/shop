@@ -10,6 +10,7 @@ export interface Product {
   name: string;
   quantity: number;
   price: string;
+  image_url?: string;
 }
 
 interface ERPState {
