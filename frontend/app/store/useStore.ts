@@ -10,7 +10,7 @@ export interface Product {
   name: string;
   quantity: number;
   price: string;
-  image_url?: string;
+  image_url?: string;  // ← shu qator
 }
 
 interface ERPState {

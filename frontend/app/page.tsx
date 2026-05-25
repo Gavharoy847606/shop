@@ -1,4 +1,5 @@
 'use client';
+// import hero from "./../public/hero.png"
 
 import { useEffect, useState } from 'react';
 import { useStore } from './store/useStore';
@@ -203,7 +204,7 @@ export default function StuffusShop() {
                 {/* Floating product images */}
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <img
-                    src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80"
+                    src="https://6a13d6d7086634e369998661.imgix.net/watch.jpeg"
                     alt="hero products"
                     style={{ width: '75%', height: '75%', objectFit: 'contain', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.18))' }}
                     onError={e => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=600&q=80'; }}
