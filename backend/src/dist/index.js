@@ -46,12 +46,7 @@ var PORT = process.env.PORT || 5000;
 var JWT_SECRET = process.env.JWT_SECRET || 'stuffus_secret';
 // ── MIDDLEWARE ──
 app.use(cors_1["default"]({
-    origin: [
-        'http://localhost:3000',
-        'http://localhost:5173',
-        process.env.CLIENT_URL || '',
-        'https://erp-shop-b1vr.onrender.com',
-    ].filter(Boolean),
+    origin: ['https://stuffushop.eu.org', 'https://www.stuffushop.eu.org'],
     credentials: true
 }));
 app.use(express_1["default"].json());

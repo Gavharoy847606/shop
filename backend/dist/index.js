@@ -22,6 +22,7 @@ app.use((0, cors_1.default)({
     credentials: true,
 }));
 app.use(express_1.default.json());
+// ── AUTH MIDDLEWARE ──
 const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -46,15 +47,15 @@ const adminMiddleware = (req, res, next) => {
     next();
 };
 // ════════════════════════════════════
-// ── HEALTH CHECK ──
+// HEALTH CHECK
 // ════════════════════════════════════
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
     res.status(200).json({ status: 'OK', message: 'Stuffus ERP ishlamoqda' });
 });
 // ════════════════════════════════════
-// ── AUTH ROUTES ──
+// AUTH
 // ════════════════════════════════════
-// POST /api/auth/register — Yangi foydalanuvchi (employee)
+// Register
 app.post('/api/auth/register', async (req, res) => {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
@@ -62,10 +63,9 @@ app.post('/api/auth/register', async (req, res) => {
         return;
     }
     try {
-        // Email band emasligini tekshirish
         const existing = await (0, db_1.query)('SELECT id FROM clents WHERE email = $1', [email]);
         if (existing.rows.length > 0) {
-            res.status(409).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
+            res.status(409).json({ error: "Bu email allaqachon ro'yxatdan o'tgan" });
             return;
         }
         const password_hash = await bcryptjs_1.default.hash(password, 10);
@@ -76,10 +76,10 @@ app.post('/api/auth/register', async (req, res) => {
     }
     catch (err) {
         console.error(err.message);
-        res.status(500).json({ error: 'Ro\'yxatdan o\'tishda xatolik' });
+        res.status(500).json({ error: "Ro'yxatdan o'tishda xatolik" });
     }
 });
-// POST /api/auth/login — Tizimga kirish
+// Login
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -89,40 +89,37 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         const result = await (0, db_1.query)('SELECT * FROM clents WHERE email = $1', [email]);
         if (result.rows.length === 0) {
-            res.status(401).json({ error: 'Email yoki parol noto\'g\'ri' });
+            res.status(401).json({ error: "Email yoki parol noto'g'ri" });
             return;
         }
         const user = result.rows[0];
         const isMatch = await bcryptjs_1.default.compare(password, user.password_hash);
         if (!isMatch) {
-            res.status(401).json({ error: 'Email yoki parol noto\'g\'ri' });
+            res.status(401).json({ error: "Email yoki parol noto'g'ri" });
             return;
         }
         const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({
-            token,
-            user: { id: user.id, name: user.name, email: user.email, role: user.role }
-        });
+        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
     }
     catch (err) {
         console.error(err.message);
         res.status(500).json({ error: 'Tizimga kirishda xatolik' });
     }
 });
-// GET /api/auth/me — Token orqali o'z ma'lumotlarini olish
+// Me
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
     try {
         const result = await (0, db_1.query)('SELECT id, name, email, role, created_at FROM clents WHERE id = $1', [req.user.id]);
         res.json(result.rows[0]);
     }
-    catch (err) {
+    catch {
         res.status(500).json({ error: 'Xatolik' });
     }
 });
 // ════════════════════════════════════
-// ── PRODUCTS ROUTES ──
+// PRODUCTS
 // ════════════════════════════════════
-// GET /api/products — Barcha mahsulotlar (public)
+// GET all
 app.get('/api/products', async (req, res) => {
     try {
         const { search, sort } = req.query;
@@ -150,7 +147,7 @@ app.get('/api/products', async (req, res) => {
         res.status(500).json({ error: 'Server xatoligi' });
     }
 });
-// GET /api/products/:id — Bitta mahsulot
+// GET one
 app.get('/api/products/:id', async (req, res) => {
     try {
         const result = await (0, db_1.query)('SELECT * FROM products WHERE id = $1', [req.params.id]);
@@ -160,11 +157,11 @@ app.get('/api/products/:id', async (req, res) => {
         }
         res.json(result.rows[0]);
     }
-    catch (err) {
+    catch {
         res.status(500).json({ error: 'Server xatoligi' });
     }
 });
-// POST /api/products — Yangi mahsulot qo'shish (admin only)
+// POST — admin only
 app.post('/api/products', authMiddleware, adminMiddleware, async (req, res) => {
     const { sku, name, image_url, quantity, price } = req.body;
     if (!sku || !name || !quantity || !price) {
@@ -177,16 +174,16 @@ app.post('/api/products', authMiddleware, adminMiddleware, async (req, res) => {
     }
     catch (err) {
         console.error(err.message);
-        res.status(500).json({ error: 'Mahsulot qo\'shishda xatolik (SKU band bo\'lishi mumkin)' });
+        res.status(500).json({ error: "Mahsulot qo'shishda xatolik (SKU band bo'lishi mumkin)" });
     }
 });
-// PUT /api/products/:id — Mahsulotni tahrirlash (admin only)
+// PUT — admin only
 app.put('/api/products/:id', authMiddleware, adminMiddleware, async (req, res) => {
     const { sku, name, image_url, quantity, price } = req.body;
     try {
-        const result = await (0, db_1.query)(`UPDATE products 
-       SET sku = $1, name = $2, image_url = $3, quantity = $4, price = $5, updated_at = NOW()
-       WHERE id = $6 RETURNING *`, [sku, name, image_url || null, quantity, price, req.params.id]);
+        const result = await (0, db_1.query)(`UPDATE products
+       SET sku=$1, name=$2, image_url=$3, quantity=$4, price=$5, updated_at=NOW()
+       WHERE id=$6 RETURNING *`, [sku, name, image_url || null, quantity, price, req.params.id]);
         if (result.rows.length === 0) {
             res.status(404).json({ error: 'Mahsulot topilmadi' });
             return;
@@ -198,37 +195,36 @@ app.put('/api/products/:id', authMiddleware, adminMiddleware, async (req, res) =
         res.status(500).json({ error: 'Tahrirlashda xatolik' });
     }
 });
-// DELETE /api/products/:id — Mahsulotni o'chirish (admin only)
+// DELETE — admin only
 app.delete('/api/products/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const result = await (0, db_1.query)('DELETE FROM products WHERE id = $1 RETURNING *', [req.params.id]);
+        const result = await (0, db_1.query)('DELETE FROM products WHERE id=$1 RETURNING *', [req.params.id]);
         if (result.rows.length === 0) {
             res.status(404).json({ error: 'Mahsulot topilmadi' });
             return;
         }
-        res.json({ message: 'Mahsulot o\'chirildi', product: result.rows[0] });
+        res.json({ message: "Mahsulot o'chirildi", product: result.rows[0] });
     }
-    catch (err) {
-        res.status(500).json({ error: 'O\'chirishda xatolik' });
+    catch {
+        res.status(500).json({ error: "O'chirishda xatolik" });
     }
 });
 // ════════════════════════════════════
-// ── CLIENTS ROUTES (admin only) ──
+// CLIENTS — admin only
 // ════════════════════════════════════
-// GET /api/clients — Barcha xodimlar
-app.get('/api/clients', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/clients', authMiddleware, adminMiddleware, async (_req, res) => {
     try {
         const result = await (0, db_1.query)('SELECT id, name, email, role, created_at FROM clents ORDER BY id DESC');
         res.json(result.rows);
     }
-    catch (err) {
+    catch {
         res.status(500).json({ error: 'Server xatoligi' });
     }
 });
 // ════════════════════════════════════
-// ── ORDERS ROUTES ──
+// ORDERS
 // ════════════════════════════════════
-// GET /api/orders — Buyurtmalar (admin — hammasi, employee — o'ziniki)
+// GET
 app.get('/api/orders', authMiddleware, async (req, res) => {
     try {
         let result;
@@ -251,11 +247,11 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
         }
         res.json(result.rows);
     }
-    catch (err) {
+    catch {
         res.status(500).json({ error: 'Server xatoligi' });
     }
 });
-// POST /api/orders — Yangi buyurtma
+// POST
 app.post('/api/orders', authMiddleware, async (req, res) => {
     const { total_amount } = req.body;
     if (!total_amount) {
@@ -266,35 +262,35 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
         const result = await (0, db_1.query)('INSERT INTO orders (clent_id, total_amount, status) VALUES ($1, $2, $3) RETURNING *', [req.user.id, total_amount, 'pending']);
         res.status(201).json(result.rows[0]);
     }
-    catch (err) {
+    catch {
         res.status(500).json({ error: 'Buyurtma yaratishda xatolik' });
     }
 });
-// PUT /api/orders/:id/status — Buyurtma statusini o'zgartirish (admin/manager)
+// PUT status
 app.put('/api/orders/:id/status', authMiddleware, async (req, res) => {
     const { status } = req.body;
     const allowed = ['pending', 'completed', 'cancelled'];
     if (!allowed.includes(status)) {
-        res.status(400).json({ error: 'Noto\'g\'ri status' });
+        res.status(400).json({ error: "Noto'g'ri status" });
         return;
     }
     if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-        res.status(403).json({ error: 'Ruxsat yo\'q' });
+        res.status(403).json({ error: "Ruxsat yo'q" });
         return;
     }
     try {
-        const result = await (0, db_1.query)('UPDATE orders SET status = $1 WHERE id = $2 RETURNING *', [status, req.params.id]);
+        const result = await (0, db_1.query)('UPDATE orders SET status=$1 WHERE id=$2 RETURNING *', [status, req.params.id]);
         if (result.rows.length === 0) {
             res.status(404).json({ error: 'Buyurtma topilmadi' });
             return;
         }
         res.json(result.rows[0]);
     }
-    catch (err) {
+    catch {
         res.status(500).json({ error: 'Xatolik' });
     }
 });
-// ── SERVER START ──
+// ── START ──
 app.listen(PORT, () => {
     console.log(`Stuffus ERP Server ${PORT}-portda ishlamoqda`);
 });

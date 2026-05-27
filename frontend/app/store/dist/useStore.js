@@ -1,4 +1,16 @@
+'use client';
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,17 +48,24 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.useStore = void 0;
+exports.useOrdersStore = exports.useStore = void 0;
 var zustand_1 = require("zustand");
+var useAuthStore_1 = require("./useAuthStore");
 var BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://erp-backend-815e.onrender.com';
-var API_URL = BACKEND_URL + "/api/products";
+// Token olish helper
+function getToken() {
+    return useAuthStore_1.useAuthStore.getState().token;
+}
+function authHeaders() {
+    var token = getToken();
+    return __assign({ 'Content-Type': 'application/json' }, (token ? { Authorization: "Bearer " + token } : {}));
+}
 exports.useStore = zustand_1.create(function (set, get) { return ({
     products: [],
     loading: false,
     error: null,
-    // Bulutli backenddan ma'lumotlarni tortib olish
     fetchProducts: function () { return __awaiter(void 0, void 0, void 0, function () {
-        var response, data, err_1;
+        var res, data, err_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -54,12 +73,12 @@ exports.useStore = zustand_1.create(function (set, get) { return ({
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, fetch(API_URL)];
+                    return [4 /*yield*/, fetch(BACKEND_URL + "/api/products")];
                 case 2:
-                    response = _a.sent();
-                    if (!response.ok)
-                        throw new Error('Tarmoq xatoligi yuz berdi');
-                    return [4 /*yield*/, response.json()];
+                    res = _a.sent();
+                    if (!res.ok)
+                        throw new Error('Mahsulotlarni yuklashda xatolik');
+                    return [4 /*yield*/, res.json()];
                 case 3:
                     data = _a.sent();
                     set({ products: data, loading: false });
@@ -72,31 +91,158 @@ exports.useStore = zustand_1.create(function (set, get) { return ({
             }
         });
     }); },
-    // Yangi mahsulot qo'shish
     addProduct: function (product) { return __awaiter(void 0, void 0, void 0, function () {
-        var response, err_2;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+        var res, _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0:
-                    _a.trys.push([0, 4, , 5]);
-                    return [4 /*yield*/, fetch(API_URL, {
+                    _b.trys.push([0, 3, , 4]);
+                    return [4 /*yield*/, fetch(BACKEND_URL + "/api/products", {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: authHeaders(),
                             body: JSON.stringify(product)
                         })];
                 case 1:
-                    response = _a.sent();
-                    if (!response.ok) return [3 /*break*/, 3];
+                    res = _b.sent();
+                    if (res.status === 401 || res.status === 403) {
+                        useAuthStore_1.useAuthStore.getState().logout();
+                        return [2 /*return*/, false];
+                    }
+                    if (!res.ok)
+                        return [2 /*return*/, false];
                     return [4 /*yield*/, get().fetchProducts()];
                 case 2:
-                    _a.sent(); // Ro'yxatni yangilash
+                    _b.sent();
                     return [2 /*return*/, true];
-                case 3: return [2 /*return*/, false];
+                case 3:
+                    _a = _b.sent();
+                    return [2 /*return*/, false];
+                case 4: return [2 /*return*/];
+            }
+        });
+    }); },
+    updateProduct: function (id, product) { return __awaiter(void 0, void 0, void 0, function () {
+        var res, _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    _b.trys.push([0, 3, , 4]);
+                    return [4 /*yield*/, fetch(BACKEND_URL + "/api/products/" + id, {
+                            method: 'PUT',
+                            headers: authHeaders(),
+                            body: JSON.stringify(product)
+                        })];
+                case 1:
+                    res = _b.sent();
+                    if (res.status === 401 || res.status === 403) {
+                        useAuthStore_1.useAuthStore.getState().logout();
+                        return [2 /*return*/, false];
+                    }
+                    if (!res.ok)
+                        return [2 /*return*/, false];
+                    return [4 /*yield*/, get().fetchProducts()];
+                case 2:
+                    _b.sent();
+                    return [2 /*return*/, true];
+                case 3:
+                    _a = _b.sent();
+                    return [2 /*return*/, false];
+                case 4: return [2 /*return*/];
+            }
+        });
+    }); },
+    deleteProduct: function (id) { return __awaiter(void 0, void 0, void 0, function () {
+        var res, _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    _b.trys.push([0, 3, , 4]);
+                    return [4 /*yield*/, fetch(BACKEND_URL + "/api/products/" + id, {
+                            method: 'DELETE',
+                            headers: authHeaders()
+                        })];
+                case 1:
+                    res = _b.sent();
+                    if (!res.ok)
+                        return [2 /*return*/, false];
+                    return [4 /*yield*/, get().fetchProducts()];
+                case 2:
+                    _b.sent();
+                    return [2 /*return*/, true];
+                case 3:
+                    _a = _b.sent();
+                    return [2 /*return*/, false];
+                case 4: return [2 /*return*/];
+            }
+        });
+    }); }
+}); });
+exports.useOrdersStore = zustand_1.create(function (set, get) { return ({
+    orders: [],
+    loading: false,
+    error: null,
+    fetchOrders: function () { return __awaiter(void 0, void 0, void 0, function () {
+        var token, res, data, err_2;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    token = getToken();
+                    if (!token) {
+                        set({ error: 'Avval tizimga kiring', loading: false });
+                        return [2 /*return*/];
+                    }
+                    set({ loading: true, error: null });
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 4, , 5]);
+                    return [4 /*yield*/, fetch(BACKEND_URL + "/api/orders", {
+                            headers: authHeaders()
+                        })];
+                case 2:
+                    res = _a.sent();
+                    if (res.status === 401) {
+                        useAuthStore_1.useAuthStore.getState().logout();
+                        set({ error: "Sessiya tugagan, qayta kiring", loading: false });
+                        return [2 /*return*/];
+                    }
+                    if (!res.ok)
+                        throw new Error('Buyurtmalarni yuklashda xatolik');
+                    return [4 /*yield*/, res.json()];
+                case 3:
+                    data = _a.sent();
+                    set({ orders: data, loading: false });
+                    return [3 /*break*/, 5];
                 case 4:
                     err_2 = _a.sent();
-                    console.error('Mahsulot qoshishda xatolik:', err_2);
-                    return [2 /*return*/, false];
+                    set({ error: err_2.message, loading: false });
+                    return [3 /*break*/, 5];
                 case 5: return [2 /*return*/];
+            }
+        });
+    }); },
+    updateOrderStatus: function (id, status) { return __awaiter(void 0, void 0, void 0, function () {
+        var res, _a;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    _b.trys.push([0, 3, , 4]);
+                    return [4 /*yield*/, fetch(BACKEND_URL + "/api/orders/" + id + "/status", {
+                            method: 'PUT',
+                            headers: authHeaders(),
+                            body: JSON.stringify({ status: status })
+                        })];
+                case 1:
+                    res = _b.sent();
+                    if (!res.ok)
+                        return [2 /*return*/, false];
+                    return [4 /*yield*/, get().fetchOrders()];
+                case 2:
+                    _b.sent();
+                    return [2 /*return*/, true];
+                case 3:
+                    _a = _b.sent();
+                    return [2 /*return*/, false];
+                case 4: return [2 /*return*/];
             }
         });
     }); }

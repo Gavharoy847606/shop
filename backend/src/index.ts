@@ -10,13 +10,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'stuffus_secret';
 
 // ── MIDDLEWARE ──
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    process.env.CLIENT_URL || '',
-    'https://erp-shop-b1vr.onrender.com',
-  ].filter(Boolean),
-  credentials: true,
+  origin: ['https://stuffushop.eu.org', 'https://www.stuffushop.eu.org'],
+  credentials: true
 }));
 app.use(express.json());
 

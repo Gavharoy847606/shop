@@ -1,11 +1,14 @@
 'use client';
-// import hero from "./../public/hero.png"
 
 import { useEffect, useState } from 'react';
-import { useStore } from './store/useStore';
+import { useAuthStore } from "./store/useAuthStore";
+import { useStore } from "./store/useStore";
+import LoginModal from "./components/loginModel";
+// import { useStore } from 'zustand';
+
 import {
   Package, PlusCircle, Search, Home, Music,
-  Smartphone, Activity, TrendingUp, Shield, BarChart2, ChevronRight
+  Smartphone, TrendingUp, Shield, Trash2, Pencil, X, Check, Lock
 } from 'lucide-react';
 
 function getProductImage(name: string): string {
@@ -22,441 +25,360 @@ function getProductImage(name: string): string {
   if (n.includes('desk')) return 'https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&q=80';
   if (n.includes('hub') || n.includes('usb') || n.includes('adapter')) return 'https://images.unsplash.com/photo-1625961332771-3f40b0e2bdcf?w=400&q=80';
   if (n.includes('ssd') || n.includes('drive')) return 'https://images.unsplash.com/photo-1597838816882-4435b1977fbe?w=400&q=80';
-  if (n.includes('watch') || n.includes('apple watch')) return 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&q=80';
+  if (n.includes('watch')) return 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&q=80';
   if (n.includes('power') || n.includes('strip') || n.includes('plug')) return 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80';
   return 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400&q=80';
 }
 
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  audio: ['headphone', 'sony', 'audio', 'speaker'],
+  home: ['chair', 'desk', 'printer', 'power', 'strip', 'plug'],
+  tech: ['laptop', 'monitor', 'phone', 'tablet', 'keyboard', 'mouse', 'hub', 'usb', 'ssd', 'watch'],
+};
+
 export default function StuffusShop() {
-  const { products, loading, error, fetchProducts, addProduct } = useStore();
+  const { products, loading, error, fetchProducts, addProduct, deleteProduct } = useStore();
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
 
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState(0);
   const [price, setPrice] = useState('');
+  const [addError, setAddError] = useState('');
+  const [addSuccess, setAddSuccess] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAddError('');
     if (!sku || !name || quantity <= 0 || !price) return;
+
+    if (!isAdmin) {
+      setAddError("Faqat admin mahsulot qo'sha oladi");
+      return;
+    }
+
     const success = await addProduct({ sku, name, quantity, price });
-    if (success) { setSku(''); setName(''); setQuantity(0); setPrice(''); }
+    if (success) {
+      setSku(''); setName(''); setQuantity(0); setPrice('');
+      setAddSuccess(true);
+      setTimeout(() => setAddSuccess(false), 3000);
+    } else {
+      setAddError("Xatolik: SKU band bo'lishi yoki token muammosi bo'lishi mumkin");
+    }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.sku.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleDelete = async (id: number) => {
+    if (!confirm("Bu mahsulotni o'chirmoqchimisiz?")) return;
+    setDeletingId(id);
+    await deleteProduct(id);
+    setDeletingId(null);
+  };
+
+  const filteredProducts = products.filter(p => {
+    const matchesSearch =
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.sku.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+    if (activeCategory === 'all') return true;
+
+    const keywords = CATEGORY_KEYWORDS[activeCategory] || [];
+    return keywords.some(kw => p.name.toLowerCase().includes(kw));
+  });
 
   const totalValue = products.reduce((s, p) => s + parseFloat(p.price) * p.quantity, 0);
   const lowStock = products.filter(p => p.quantity > 0 && p.quantity <= 5).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f9fc', color: '#0f0f14', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div className="space-y-10 text-slate-100 antialiased">
 
-      {/* ── NAVBAR ── */}
-      <nav style={{
-        background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(0,0,0,0.06)',
-        position: 'sticky', top: 0, zIndex: 50, padding: '0 2.5rem',
-        boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
-      }}>
-        <div style={{ maxWidth: 1320, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 64 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
-            {/* Logo */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 36, height: 36, background: '#0f0f14', borderRadius: 10,
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <span style={{ color: '#fff', fontSize: 14, fontWeight: 900 }}>S</span>
-              </div>
-              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.4px', color: '#0f0f14' }}>Stuffus shop</span>
+      {/* ── HERO ── */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/10 bg-slate-900/40 backdrop-blur-md p-8 md:p-12 shadow-2xl">
+        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-emerald-500/10 blur-[100px] pointer-events-none" />
+        <div className="absolute -bottom-20 left-1/3 w-80 h-80 rounded-full bg-teal-500/5 blur-[80px] pointer-events-none" />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="animate-pulse">✦</span> Premium Inventory Suite · v2.6
             </div>
-            {/* Nav links */}
-            <div style={{ display: 'flex', gap: 32, fontSize: 14, fontWeight: 500 }}>
-              {['Boshqaruv', 'Ombor', 'Tarmoq hisoboti'].map((item, i) => (
-                <span key={item} style={{
-                  color: i === 0 ? '#0f0f14' : '#9ca3af', cursor: 'pointer',
-                  paddingBottom: 3, borderBottom: i === 0 ? '2px solid #0f0f14' : 'none',
-                  transition: 'color 0.15s'
-                }}>{item}</span>
+
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+              Mahsulot sotuvini <br />
+              bir joydan <br />
+              <span className="bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">boshqaring.</span>
+            </h1>
+
+            {/* Search */}
+            <div className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-full p-1.5 pl-4 max-w-md shadow-inner focus-within:border-emerald-500/50 transition-all duration-200">
+              <Search className="w-4 h-4 text-slate-500 flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="Mahsulot nomi yoki SKU..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent border-none outline-none text-xs text-slate-200 placeholder-slate-500"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="text-slate-500 hover:text-slate-300">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3 pt-4">
+              {[
+                { label: 'MAHSULOTLAR', value: products.length, icon: <Package className="w-4 h-4 text-emerald-400" /> },
+                { label: 'UMUMIY QIYMAT', value: `$${(totalValue / 1000).toFixed(0)}k`, icon: <TrendingUp className="w-4 h-4 text-emerald-400" />, accent: true },
+                { label: 'KAM ZAXIRA', value: lowStock, icon: <Shield className="w-4 h-4 text-amber-400" /> },
+              ].map(s => (
+                <div key={s.label} className="bg-slate-950/40 border border-slate-800/60 rounded-2xl p-4 flex flex-col justify-between">
+                  <div className="opacity-80">{s.icon}</div>
+                  <div className={`text-xl font-extrabold tracking-tight mt-2 ${s.accent ? 'text-emerald-400' : 'text-white'}`}>{s.value}</div>
+                  <div className="text-[9px] font-bold text-slate-500 tracking-wider mt-1">{s.label}</div>
+                </div>
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: '#f0fdf4', color: '#16a34a',
-              padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-              border: '1px solid #bbf7d0'
-            }}>
-              <Activity style={{ width: 12, height: 12 }} />
-              Render Cloud DB: Onlayn
-            </div>
-            <div style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              cursor: 'pointer'
-            }} />
-          </div>
-        </div>
-      </nav>
 
-      {/* ── HERO SECTION ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.06)', padding: '64px 2.5rem 72px', overflow: 'hidden', position: 'relative' }}>
-        {/* Soft bg blobs */}
-        <div style={{ position: 'absolute', top: -120, right: -80, width: 700, height: 700, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 65%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -60, left: '30%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 65%)', pointerEvents: 'none' }} />
-
-        <div style={{ maxWidth: 1320, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
-
-            {/* Left text */}
-            <div>
-              {/* Badge */}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: '#f5f3ff', border: '1px solid #e9d5ff',
-                borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 600,
-                color: '#7c3aed', marginBottom: 28
-              }}>
-                <span style={{ fontSize: 13 }}>✦</span>
-                Premium Inventory Suite · v2.6
+          {/* Hero image */}
+          <div className="relative flex justify-center">
+            <div className="w-full max-w-md aspect-[4/3] rounded-2xl overflow-hidden relative border border-slate-800 bg-slate-950/50 shadow-2xl flex items-center justify-center group">
+              <div className="absolute top-4 right-4 z-10 bg-emerald-500/10 backdrop-blur-md text-emerald-400 border border-emerald-500/20 text-[9px] font-black tracking-widest px-3 py-1 rounded-full">
+                LIVE INVENTORY
               </div>
-
-              <h1 style={{ fontSize: 'clamp(2.6rem,4.5vw,3.8rem)', fontWeight: 900, lineHeight: 1.08, letterSpacing: '-2.5px', marginBottom: 20, color: '#0f0f14' }}>
-                Mahsulot sotuvini<br />
-                bir joydan<br />
-                <span style={{ color: '#6366f1' }}>boshqaring.</span>
-              </h1>
-
-              <p style={{ fontSize: 15, color: '#6b7280', lineHeight: 1.75, marginBottom: 36, maxWidth: 460 }}>
-                Bulutli infratuzilma, real vaqt rejimidagi inventarizatsiya va premium tahlil —
-                barchasi sizning omboringiz va sotuv jamoangizni tezlashtirish uchun.
-              </p>
-
-              {/* Search */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                background: '#f9fafb', border: '1.5px solid #e5e7eb',
-                borderRadius: 50, padding: '6px 6px 6px 18px',
-                maxWidth: 480, boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
-              }}>
-                <Search style={{ width: 16, height: 16, color: '#9ca3af', flexShrink: 0 }} />
-                <input
-                  type="text"
-                  placeholder="Mahsulot nomi yoki SKU bo'yicha qidirish..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  style={{
-                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                    fontSize: 13, color: '#0f0f14', caretColor: '#6366f1'
-                  }}
-                />
-                <button style={{
-                  background: '#0f0f14', color: '#fff', border: 'none',
-                  borderRadius: 40, padding: '9px 22px', fontSize: 13,
-                  fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.2px'
-                }}>Qidirish</button>
-              </div>
-
-              {/* Stats row */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 32 }}>
-                {[
-                  { label: 'MAHSULOTLAR', value: products.length, icon: <Package style={{ width: 16, height: 16 }} /> },
-                  { label: 'BU OY SOTUV', value: '+18%', icon: <TrendingUp style={{ width: 16, height: 16 }} />, accent: true },
-                  { label: 'UPTIME', value: '99.9%', icon: <Shield style={{ width: 16, height: 16 }} /> },
-                ].map(s => (
-                  <div key={s.label} style={{
-                    flex: 1, background: '#f9fafb', border: '1px solid #e5e7eb',
-                    borderRadius: 16, padding: '16px 18px'
-                  }}>
-                    <div style={{ color: '#9ca3af', marginBottom: 8 }}>{s.icon}</div>
-                    <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-1px', color: s.accent ? '#16a34a' : '#0f0f14' }}>{s.value}</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', letterSpacing: 1, marginTop: 3 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right: Hero image card */}
-            <div style={{ position: 'relative' }}>
-              <div style={{
-                background: 'linear-gradient(145deg, #f0f4ff 0%, #f8f0ff 50%, #fff5f0 100%)',
-                borderRadius: 28, overflow: 'hidden', position: 'relative',
-                aspectRatio: '4/3',
-                boxShadow: '0 32px 80px rgba(99,102,241,0.15), 0 8px 24px rgba(0,0,0,0.08)',
-                border: '1px solid rgba(255,255,255,0.8)'
-              }}>
-                {/* LIVE badge */}
-                <div style={{
-                  position: 'absolute', top: 18, right: 18, zIndex: 10,
-                  background: '#0f0f14', color: '#fff',
-                  fontSize: 10, fontWeight: 800, letterSpacing: 1.5,
-                  padding: '6px 14px', borderRadius: 20
-                }}>LIVE INVENTORY</div>
-
-                {/* Floating product images */}
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img
-                    src="https://6a13d6d7086634e369998661.imgix.net/watch.jpeg"
-                    alt="hero products"
-                    style={{ width: '75%', height: '75%', objectFit: 'contain', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.18))' }}
-                    onError={e => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=600&q=80'; }}
-                  />
+              <img
+                src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=600&q=80"
+                alt="Inventory"
+                className="w-2/3 h-2/3 object-contain filter drop-shadow-[0_20px_50px_rgba(16,185,129,0.2)] group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur-md border border-emerald-500/10 rounded-xl p-3 flex items-center gap-3 shadow-xl">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                  <TrendingUp className="w-4 h-4" />
                 </div>
-
-                {/* Bottom sales card */}
-                <div style={{
-                  position: 'absolute', bottom: 20, left: 20,
-                  background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)',
-                  borderRadius: 16, padding: '12px 16px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-                  display: 'flex', alignItems: 'center', gap: 12
-                }}>
-                  <div style={{
-                    width: 36, height: 36, background: '#f0fdf4', borderRadius: 10,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    <TrendingUp style={{ width: 18, height: 18, color: '#16a34a' }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', letterSpacing: 0.5 }}>BUGUNGI SOTUV</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: '#0f0f14', letterSpacing: '-0.5px' }}>
-                      ${(totalValue / 1000).toFixed(1)}k &nbsp;·&nbsp; <span style={{ color: '#16a34a' }}>+24%</span>
-                    </div>
-                  </div>
+                <div>
+                  <div className="text-[9px] font-bold text-slate-500">UMUMIY QIYMAT</div>
+                  <div className="text-sm font-black text-white">${(totalValue / 1000).toFixed(1)}k</div>
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>
 
       {/* ── MAIN WORKSPACE ── */}
-      <main style={{ maxWidth: 1320, margin: '0 auto', padding: '40px 2.5rem 80px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 28, alignItems: 'start' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8 items-start">
 
-          {/* ── SIDEBAR ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Categories */}
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 20, padding: '18px 14px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#9ca3af', letterSpacing: 2, marginBottom: 12 }}>KATEGORIYALAR</div>
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Categories */}
+          <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-xl">
+            <div className="text-[10px] font-bold text-slate-500 tracking-widest mb-3 uppercase">Kategoriyalar</div>
+            <div className="space-y-1">
               {[
-                { id: 'all', label: 'Barcha mahsulotlar', icon: <Package style={{ width: 14, height: 14 }} />, count: products.length },
-                { id: 'home', label: 'Maishiy texnika', icon: <Home style={{ width: 14, height: 14 }} /> },
-                { id: 'audio', label: 'Audio jihozlar', icon: <Music style={{ width: 14, height: 14 }} /> },
-                { id: 'tech', label: 'Elektronika', icon: <Smartphone style={{ width: 14, height: 14 }} /> },
-              ].map(cat => (
-                <div key={cat.id} onClick={() => setActiveCategory(cat.id)} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '9px 12px', borderRadius: 12, cursor: 'pointer', marginBottom: 3,
-                  background: activeCategory === cat.id ? '#f5f3ff' : 'transparent',
-                  color: activeCategory === cat.id ? '#6366f1' : '#6b7280',
-                  fontWeight: 600, fontSize: 13, transition: 'all 0.15s'
-                }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{cat.icon}{cat.label}</span>
-                  {cat.count !== undefined && (
-                    <span style={{
-                      background: activeCategory === cat.id ? '#6366f1' : '#f3f4f6',
-                      color: activeCategory === cat.id ? '#fff' : '#6b7280',
-                      fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 8
-                    }}>{cat.count}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Add product form */}
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 20, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-              <h3 style={{ fontSize: 13, fontWeight: 800, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6, color: '#0f0f14' }}>
-                <PlusCircle style={{ width: 14, height: 14, color: '#6366f1' }} /> Tovar qo'shish
-              </h3>
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                {[
-                  { label: 'SKU KOD', val: sku, set: setSku, ph: 'SKU-001', mono: true },
-                  { label: 'MAHSULOT NOMI', val: name, set: setName, ph: 'Headphone R175' },
-                ].map(f => (
-                  <div key={f.label}>
-                    <label style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', letterSpacing: 1, display: 'block', marginBottom: 5 }}>{f.label}</label>
-                    <input type="text" value={f.val} onChange={e => f.set(e.target.value)} required placeholder={f.ph} style={{
-                      width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10,
-                      padding: '8px 12px', fontSize: 12, color: '#0f0f14', outline: 'none',
-                      fontFamily: f.mono ? 'monospace' : 'inherit', boxSizing: 'border-box' as const,
-                      transition: 'border-color 0.15s'
-                    }} />
-                  </div>
-                ))}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {[
-                    { label: 'MIQDOR', val: quantity, isNum: true, set: (v: string) => setQuantity(Number(v)) },
-                    { label: 'NARX ($)', val: price, isNum: false, ph: '29.90', set: setPrice },
-                  ].map(f => (
-                    <div key={f.label}>
-                      <label style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', letterSpacing: 1, display: 'block', marginBottom: 5 }}>{f.label}</label>
-                      <input type={f.isNum ? 'number' : 'text'} value={f.val}
-                        onChange={e => f.set(e.target.value)} required
-                        placeholder={(f as any).ph || ''}
-                        style={{
-                          width: '100%', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10,
-                          padding: '8px 12px', fontSize: 12, color: '#0f0f14', outline: 'none', boxSizing: 'border-box' as const
-                        }} />
-                    </div>
-                  ))}
-                </div>
-                <button type="submit" style={{
-                  width: '100%', background: '#0f0f14', color: '#fff',
-                  border: 'none', borderRadius: 12, padding: '10px',
-                  fontSize: 11, fontWeight: 800, cursor: 'pointer', letterSpacing: 1, marginTop: 4,
-                  transition: 'opacity 0.15s'
-                }}>BAZAGA JOYLASH</button>
-              </form>
-            </div>
-          </div>
-
-          {/* ── PRODUCT GRID ── */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: 13, color: '#9ca3af', fontWeight: 600 }}>{filteredProducts.length} ta mahsulot</div>
-              {lowStock > 0 && (
-                <div style={{
-                  background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e',
-                  fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20
-                }}>⚠ {lowStock} ta kam zaxira</div>
-              )}
-            </div>
-
-            {loading && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} style={{ background: '#f3f4f6', borderRadius: 20, height: 300, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                ))}
-              </div>
-            )}
-            {error && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 16, padding: '14px 18px', color: '#dc2626', fontSize: 13 }}>
-                Xatolik: {error}
-              </div>
-            )}
-            {!loading && filteredProducts.length === 0 && (
-              <div style={{ background: '#fff', borderRadius: 24, border: '1px solid #e5e7eb', padding: 60, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
-                <Package style={{ width: 36, height: 36, margin: '0 auto 12px', opacity: 0.3 }} />
-                <div>Mahsulot topilmadi</div>
-              </div>
-            )}
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
-              {filteredProducts.map(product => {
-                const isLow = product.quantity > 0 && product.quantity <= 5;
-                const isOut = product.quantity === 0;
-                const imgSrc = imgErrors[product.sku] ? null : (product.image_url || null);
-
+                { id: 'all', label: 'Barcha mahsulotlar', icon: <Package className="w-4 h-4" />, count: products.length },
+                { id: 'home', label: 'Maishiy texnika', icon: <Home className="w-4 h-4" /> },
+                { id: 'audio', label: 'Audio jihozlar', icon: <Music className="w-4 h-4" /> },
+                { id: 'tech', label: 'Elektronika', icon: <Smartphone className="w-4 h-4" /> },
+              ].map(cat => {
+                const active = activeCategory === cat.id;
                 return (
-                  <div key={product.id}
-                    style={{
-                      background: '#fff', border: '1px solid #e5e7eb', borderRadius: 20,
-                      overflow: 'hidden', display: 'flex', flexDirection: 'column',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                      transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer'
-                    }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)';
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = '0 12px 32px rgba(99,102,241,0.12), 0 4px 12px rgba(0,0,0,0.06)';
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
-                    }}
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                      active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+                    }`}
                   >
-                    {/* Image area */}
-                    <div style={{ position: 'relative', height: 168, background: 'linear-gradient(145deg, #f8f9ff, #f0f4ff)', overflow: 'hidden' }}>
-                      {imgSrc ? (
-                        <img src={imgSrc} alt={product.name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.35s ease' }}
-                          onError={() => setImgErrors(prev => ({ ...prev, [product.sku]: true }))}
-                          onMouseEnter={e => (e.target as HTMLImageElement).style.transform = 'scale(1.06)'}
-                          onMouseLeave={e => (e.target as HTMLImageElement).style.transform = 'scale(1)'}
-                        />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Package style={{ width: 44, height: 44, color: '#d1d5db' }} />
-                        </div>
-                      )}
-                      {/* Stock badge */}
-                      <div style={{
-                        position: 'absolute', top: 10, right: 10,
-                        background: isOut ? '#fef2f2' : isLow ? '#fffbeb' : '#f0fdf4',
-                        color: isOut ? '#dc2626' : isLow ? '#d97706' : '#16a34a',
-                        border: `1px solid ${isOut ? '#fecaca' : isLow ? '#fde68a' : '#bbf7d0'}`,
-                        fontSize: 9, fontWeight: 800, padding: '3px 9px',
-                        borderRadius: 20, letterSpacing: 0.5
-                      }}>
-                        {isOut ? 'TUGAGAN' : isLow ? 'KAM QOLDI' : 'MAVJUD'}
-                      </div>
-                    </div>
-
-                    {/* Info */}
-                    <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, color: '#6366f1',
-                        background: '#f5f3ff', padding: '2px 8px',
-                        borderRadius: 6, display: 'inline-block',
-                        marginBottom: 8, fontFamily: 'monospace'
-                      }}>{product.sku}</span>
-
-                      <h4 style={{ fontSize: 13, fontWeight: 700, color: '#0f0f14', lineHeight: 1.35, marginBottom: 6, flex: 1 }}>
-                        {product.name}
-                      </h4>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
-                        <div>
-                          <div style={{ fontSize: 19, fontWeight: 900, color: '#0f0f14', letterSpacing: '-0.5px' }}>
-                            ${parseFloat(product.price).toFixed(2)}
-                          </div>
-                          <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600 }}>{product.quantity} dona zaxira</div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, borderTop: '1px solid #f3f4f6', paddingTop: 12 }}>
-                        <button style={{
-                          background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151',
-                          borderRadius: 10, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                          transition: 'background 0.15s'
-                        }}>Ko'rish</button>
-                        <button style={{
-                          background: '#0f0f14', border: 'none', color: '#fff',
-                          borderRadius: 10, padding: '7px 0', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                          transition: 'opacity 0.15s'
-                        }}>Tahrirlash</button>
-                      </div>
-                    </div>
-                  </div>
+                    <span className="flex items-center gap-2.5">{cat.icon} {cat.label}</span>
+                    {cat.count !== undefined && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${active ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                        {cat.count}
+                      </span>
+                    )}
+                  </button>
                 );
               })}
             </div>
           </div>
-        </div>
-      </main>
 
-      {/* ── FOOTER ── */}
-      <footer style={{ borderTop: '1px solid #e5e7eb', background: '#fff', padding: '28px 2.5rem' }}>
-        <div style={{ maxWidth: 1320, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f0f14' }}>Stuffus shop</div>
-          <div style={{ fontSize: 12, color: '#9ca3af' }}>© 2026 Stuffus Shop. Hamma huquqlar himoyalangan.</div>
+          {/* Add Product Form — faqat admin uchun */}
+          <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <h3 className="text-xs font-bold text-white tracking-wider mb-4 flex items-center gap-2">
+              <PlusCircle className="w-4 h-4 text-emerald-400" /> TOVAR QO'SHISH
+            </h3>
+
+            {!user ? (
+              <div className="text-center py-4 space-y-2">
+                <Lock className="w-6 h-6 text-slate-600 mx-auto" />
+                <p className="text-slate-500 text-xs">Mahsulot qo'shish uchun tizimga kiring</p>
+              </div>
+            ) : !isAdmin ? (
+              <div className="text-center py-4 space-y-2">
+                <Lock className="w-6 h-6 text-amber-600/50 mx-auto" />
+                <p className="text-amber-500/70 text-xs">Faqat admin mahsulot qo'sha oladi</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {addError && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-red-400 text-[10px]">
+                    {addError}
+                  </div>
+                )}
+                {addSuccess && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 text-emerald-400 text-[10px] flex items-center gap-1.5">
+                    <Check className="w-3 h-3" /> Mahsulot muvaffaqiyatli qo'shildi!
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 tracking-wider block mb-1">SKU KOD</label>
+                  <input type="text" value={sku} onChange={e => setSku(e.target.value)} required placeholder="SKU-001"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono outline-none focus:border-emerald-500/50 transition-colors" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 tracking-wider block mb-1">MAHSULOT NOMI</label>
+                  <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="Headphone R175"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500/50 transition-colors" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 tracking-wider block mb-1">MIQDORI</label>
+                    <input type="number" value={quantity || ''} onChange={e => setQuantity(Number(e.target.value))} required min={1}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500/50 transition-colors" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 tracking-wider block mb-1">NARX ($)</label>
+                    <input type="text" value={price} onChange={e => setPrice(e.target.value)} required placeholder="29.90"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500/50 transition-colors" />
+                  </div>
+                </div>
+                <button type="submit"
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs py-2.5 rounded-xl tracking-wider shadow-md active:scale-[0.98] transition-all duration-150">
+                  BAZAGA JOYLASH
+                </button>
+              </form>
+            )}
+          </div>
         </div>
+
+        {/* Products Grid */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="text-xs text-slate-400 font-medium">{filteredProducts.length} ta mahsulot</div>
+            {lowStock > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] font-bold px-3 py-1 rounded-full">
+                ⚠ {lowStock} ta kam zaxira
+              </div>
+            )}
+          </div>
+
+          {loading && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-slate-900/40 border border-slate-800 rounded-2xl h-64 animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-xs">
+              Xatolik: {error}
+            </div>
+          )}
+
+          {!loading && filteredProducts.length === 0 && (
+            <div className="bg-slate-900/20 border border-slate-800/80 rounded-2xl py-16 text-center text-slate-500 text-sm">
+              <Package className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              Mahsulot topilmadi
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredProducts.map(product => {
+              const isLow = product.quantity > 0 && product.quantity <= 5;
+              const isOut = product.quantity === 0;
+              const imgSrc = imgErrors[product.sku] ? null : (product.image_url || getProductImage(product.name));
+
+              return (
+                <div key={product.id}
+                  className="group bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 hover:border-emerald-500/30 rounded-2xl overflow-hidden flex flex-col shadow-lg transition-all duration-300">
+
+                  <div className="relative h-40 bg-slate-950 flex items-center justify-center overflow-hidden">
+                    {imgSrc ? (
+                      <img src={imgSrc} alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={() => setImgErrors(prev => ({ ...prev, [product.sku]: true }))} />
+                    ) : (
+                      <Package className="w-10 h-10 text-slate-700" />
+                    )}
+                    <div className={`absolute top-3 right-3 text-[9px] font-black tracking-wider px-2 py-0.5 rounded-md border ${
+                      isOut ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                      isLow ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                      'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    }`}>
+                      {isOut ? 'TUGAGAN' : isLow ? 'KAM QOLDI' : 'MAVJUD'}
+                    </div>
+                  </div>
+
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-2 py-0.5 rounded font-mono">
+                        {product.sku}
+                      </span>
+                      <h4 className="text-xs font-bold text-slate-200 mt-2 line-clamp-2 leading-tight group-hover:text-white transition-colors">
+                        {product.name}
+                      </h4>
+                    </div>
+
+                    <div className="flex justify-between items-end pt-2 border-t border-slate-800/60">
+                      <div>
+                        <div className="text-lg font-black text-white">${parseFloat(product.price).toFixed(2)}</div>
+                        <div className="text-[10px] text-slate-500 font-semibold">{product.quantity} dona</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[11px] font-bold py-1.5 rounded-lg transition-colors">
+                        Ko'rish
+                      </button>
+                      {isAdmin ? (
+                        <button
+                          onClick={() => product.id && handleDelete(product.id)}
+                          disabled={deletingId === product.id}
+                          className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[11px] font-bold py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          {deletingId === product.id ? '...' : "O'chirish"}
+                        </button>
+                      ) : (
+                        <button className="bg-slate-100 hover:bg-white text-slate-950 text-[11px] font-black py-1.5 rounded-lg transition-colors">
+                          Tahrirlash
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-900/60 pt-6 mt-12 text-center sm:flex sm:justify-between sm:text-left text-xs text-slate-500">
+        <div className="font-bold text-slate-400 mb-2 sm:mb-0">STUFFUS.ERP</div>
+        <div>© 2026 Stuffus Shop. Hamma huquqlar himoyalangan.</div>
       </footer>
-
-      <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        input::placeholder { color: #9ca3af !important; }
-        @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:.8} }
-      `}</style>
     </div>
   );
 }
