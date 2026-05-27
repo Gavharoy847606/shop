@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Nginx Load Balancer (Trafikni taqsimlovchi)
+  # Nginx Load Balancer (Trafikni taqsimlovchi yagona kirish nuqtasi)
   load_balancer:
     image: nginx:alpine
     volumes:
@@ -9,15 +9,42 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - backend
+      - erp_backend_1
+      - erp_backend_2
+      - erp_backend_3
 
-  # ERP Backend (Bu erda ports qismini olib tashlaymiz, faqat LB orqali kiriladi)
-  backend:
-    build: ./frontend # (boyagi monorepo dockerfile joylashuvi)
+  # ERP Backend - 1-nusxa (Asosiy xizmat ko'rsatuvchi)
+  erp_backend_1:
+    build: ./frontend 
     environment:
       - PORT=5000
       - DB_HOST=dpg-d808kc8sfn5c739appug-a.virginia-postgres.render.com
       - DB_NAME=localhost_mvo8
       - DB_USER=wed
       - DB_PASSWORD=QSeRb83uaJvzLMdkLrXlOEBALwq8W9Z4
-      
+    expose:
+      - "5000"
+
+  # ERP Backend - 2-nusxa (Auto-scaling orqali yuklama oshganda qo'shilgan)
+  erp_backend_2:
+    build: ./frontend
+    environment:
+      - PORT=5000
+      - DB_HOST=dpg-d808kc8sfn5c739appug-a.virginia-postgres.render.com
+      - DB_NAME=localhost_mvo8
+      - DB_USER=wed
+      - DB_PASSWORD=QSeRb83uaJvzLMdkLrXlOEBALwq8W9Z4
+    expose:
+      - "5000"
+
+  # ERP Backend - 3-nusxa (Mavsumiy yuqori yuklamalarni ko'tarish uchun)
+  erp_backend_3:
+    build: ./frontend
+    environment:
+      - PORT=5000
+      - DB_HOST=dpg-d808kc8sfn5c739appug-a.virginia-postgres.render.com
+      - DB_NAME=localhost_mvo8
+      - DB_USER=wed
+      - DB_PASSWORD=QSeRb83uaJvzLMdkLrXlOEBALwq8W9Z4
+    expose:
+      - "5000"

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from "./store/useAuthStore";
 import { useStore } from "./store/useStore";
-import LoginModal from "./components/loginModel";
+// import LoginModal from "./components/loginModel";
 // import { useStore } from 'zustand';
 
 import {

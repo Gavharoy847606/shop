@@ -12,7 +12,6 @@ jobs:
       - name: Kodni GitHub'dan tortib olish
         uses: actions/checkout@v4
 
-      # Paketlar talab qilayotgan Node.js 22 versiyasini o'rnatamiz
       - name: Node.js muhitini sozlash
         uses: actions/setup-node@v4
         with:
@@ -20,13 +19,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './frontend/package-lock.json'
 
-      # Monorepo va lock-file xatolarini chetlab o'tish uchun professional yondashuv
       - name: Frontend paketlarini o'rnatish
         run: |
           cd frontend
           npm install --no-audit --no-fund
           
-      - name: Docker sozlanganligini tekshirish
+      - name: Docker kompozitsiyasini validatsiya qilish (Tarmoq tekshiruvi)
         run: |
           docker compose config
 
@@ -34,6 +32,6 @@ jobs:
     needs: test-and-build
     runs-on: ubuntu-latest
     steps:
-      - name: Render Webhook orqali Deploy buyrug'ini yuborish
+      - name: Render Webhook orqali Avtomatik Deploy buyrug'ini yuborish
         run: |
           curl -X POST "${{ secrets.RENDER_FRONTEND_WEBHOOK }}"
